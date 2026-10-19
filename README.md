@@ -1,92 +1,214 @@
-# 小米AX6000解锁ssh，刷机openwrt固件 clash翻墙，AX6000 科学上网
-本教程解锁 AX6000 SSH 不需要借助其它软路由，教程有点长，请大家仔细看视频教程<br>
-AX6000解锁SSH 视频教程：https://youtu.be/cLSEmZ6ufE4
+# Xiaomi AX6000 — Unlock SSH, Flash OpenWrt Firmware, Set Up Clash for Internet Access (Proxy/VPN)
 
-#### 工具下载，<a href="https://github.com/aews/lyq/releases/download/AX6000/AX6000-SSH.zip" target="_blank">点击下载>></a>
+This tutorial shows how to unlock SSH on the Xiaomi AX6000 **without needing a second software router**, and then flash OpenWrt and install Clash/ShellClash for proxy access. The guide is fairly long — please watch the video tutorial carefully and follow each step in order.
 
-#### 第一步，设置 移动热点
-网络名称改成：OpenWrt，密码：12345678 ，频带：2.4GHz<br>
-查看WiFi信道（通常为1），可通过另外的电脑或手机APP连接这个WiFi查看信道。
+- **AX6000 SSH unlock video tutorial:** https://youtu.be/cLSEmZ6ufE4
+- **ShellClash / internet-access video tutorial:** https://youtu.be/vn5QdyDlTtI
 
-#### 第二步，AX6000刷固件，降级
+> ⚠️ **Disclaimer:** Flashing firmware and unlocking SSH can permanently brick your router and will likely void your warranty. Proceed at your own risk, and make sure to follow every step exactly as shown.
 
-#### 第三步，安装VMware虚拟机，并安装OpenWrt
-OpenWrt 地址：192.168.5.1    用户名：root   密码：password
+---
 
-#### 第四步，用WinSCP上传“xqsystem.lua”到OpenWrt的目录：/usr/lib/lua/luci/controller/admin/
+## Prerequisites
 
-#### 第五步，将OpenWrt LAN口 IPv4 改为：169.254.31.1
+Before you start, prepare the following:
 
-#### 第六步，开启 移动热点 ，并设置热点网络连接，去掉 Internet 协议版本 IPv4
+- A Windows PC (the steps below use Windows-only tools such as VMware, WinSCP and PuTTY)
+- A phone with a mobile hotspot (used to trick the router into connecting to your OpenWrt VM)
+- **Tool package (required):** <a href="https://github.com/aews/lyq/releases/download/AX6000/AX6000-SSH.zip" target="_blank">Download the AX6000-SSH tools >></a>
+- **PuTTY (SSH client):** <a href="https://github.com/aews/lyq/releases/download/AX6000/putty.zip" target="_blank">Download PuTTY >></a>
+- VMware Workstation (installed in Step 3)
+- WinSCP (installed in Step 4)
 
-#### 第七步，编辑虚拟机的桥接网络
-编辑 > 虚拟网络编辑器 > 更改设置
+---
 
-#### 第八步，登录小米AX6000
+## Step 1 — Set Up the Mobile Hotspot
 
-    http://192.168.31.1/cgi-bin/luci/;stok=XXXXXX/api/xqsystem/extendwifi_connect_inited_router?ssid=OpenWrt&password=12345678&encryption=WPA2PSKenctype=CCMP&channel=1&band=2g&admin_username=root&admin_password=admin&admin_nonce=xxx
+Create a hotspot on your phone with exactly these settings:
 
-#### 第九步，通过SN获取默认root账号的密码（SN码在路由器底部或192.168.31.1 能查看到）
+| Setting | Value |
+|---|---|
+| Network name (SSID) | `OpenWrt` |
+| Password | `12345678` |
+| Band | **2.4 GHz** (must be 2.4 GHz, not 5 GHz) |
 
-    https://miwifi.dev/ssh
-    
-*如果以上计算密码网址打不开，请下载这个使用，<a href="https://github.com/aews/lyq/releases/download/AX6000/SN.zip" target="_blank">点击下载>></a> <br>
-<code>SN码格式：30212/F1ZD22032</code><br><br>
+Then check the **Wi-Fi channel** the hotspot is using (it is usually channel `1`). You can verify this by connecting another computer or phone to the hotspot and inspecting the channel in the Wi-Fi app/system settings. You will need this channel number in Step 8.
 
-## 常见问题：
-**需要特别注意：<br>**
-1、每次登录小米路由器后台 stok码 都会变动，请以最新登录的为准。<br>
-2、解锁SSH成功之后有可能不会有任何提示，可以用putty登录查看是否解锁成功，显示“ARE U OK”就表示解锁成功。<br>
-3、如果第一次没解锁成功，请重新登录小米路由器后台，再重新复制 stok码 ，再次解锁。<br><br>
+## Step 2 — Flash (Downgrade) the Router Firmware
 
-**如果登录不了OpenWrt  192.168.5.1<br>**
-1、重启一下OpenWrt，手动重启，或者输入命令：reboot<br>
-2、首先确定OpenWrt的的IP是否改成了 169.254.31.1，改成了这个就要用这个IP登录<br>
-3、将本地网络连接IP网段改为 OpenWrt IP 网段<br>
-4、打开VMware：关闭正在运行虚拟机OpenWrt，编辑 > 虚拟网络编辑器 > 更改设置 > 还原默认设置<br>
-5、在浏览器输入 OpenWrt IP 登录。<br><br>
+Flash the Xiaomi AX6000 with the firmware from the tool package to **downgrade** it to a version that is vulnerable to the SSH-unlock method. The exact firmware file and flashing procedure are demonstrated in the video tutorial above — use the MiFi web UI at `http://192.168.31.1` (System → Upgrade) or the Mi Wi-Fi app to perform the flash, and **do not power off the router during the process**.
 
-**如果出现：{"msg":"一键换机过程中请求对端接口失败","code":1643}**<br>
-在虚拟机中，输入：<br>
-vim /etc/config/dhcp<br>
-然后按住d键，删除全部内容，然后按 ESC 键<br>
-再按":wq"<br>
-再按回车键<br>
-然后重启虚拟机，输入"reboot"<br>
+## Step 3 — Install VMware and OpenWrt
 
+1. Install **VMware Workstation** on your PC.
+2. Create a new virtual machine and install **OpenWrt** in it (the OpenWrt image is included in the tool package).
+3. Once booted, log in to the OpenWrt web interface:
 
-# 安装ShellClash 科学上网
-小米AX6000科学上网教程：https://youtu.be/vn5QdyDlTtI
+   | Item | Value |
+   |---|---|
+   | Address | `192.168.5.1` |
+   | Username | `root` |
+   | Password | `password` |
 
-    export url='https://testingcf.jsdelivr.net/gh/juewuy/ShellCrash@master' && sh -c "$(curl -kfsSl $url/install.sh)" && . /etc/profile &> /dev/null
-    
-如果不能安装请使用下面备用安装源：
+## Step 4 — Upload `xqsystem.lua` to OpenWrt
 
-    #1
-    export url='https://raw.githubusercontent.com/juewuy/ShellCrash/master' && sh -c "$(curl -kfsSl $url/install.sh)" && . /etc/profile &> /dev/null
+1. Open **WinSCP** and connect to the OpenWrt VM (protocol `SCP` or `SFTP`, host `192.168.5.1`, user `root`, password `password`).
+2. Upload the file **`xqsystem.lua`** (from the tool package) into this directory on OpenWrt:
 
-    #2
-    export url='https://fastly.jsdelivr.net/gh/juewuy/ShellCrash@master' && sh -c "$(curl -kfsSl $url/install.sh)" && source /etc/profile &> /dev/null
+   ```
+   /usr/lib/lua/luci/controller/admin/
+   ```
 
-    #3
-    export url='https://gh.jwsc.eu.org/master' && sh -c "$(curl -kfsSl $url/install.sh)" && . /etc/profile &> /dev/null
+   This script adds the endpoint the stock Xiaomi firmware will call during Step 8, which is what actually unlocks SSH.
 
-    #4
-    export url='https://testingcf.jsdelivr.net/gh/juewuy/ShellCrash@master' && wget -q --no-check-certificate -O /tmp/install.sh $url/install.sh  && sh /tmp/install.sh && . /etc/profile &> /dev/null
+## Step 5 — Change the OpenWrt LAN IPv4 Address
 
-    #5
-    export url='http://t.jwsc.eu.org' && wget -q -O /tmp/install.sh $url/install.sh  && sh /tmp/install.sh && . /etc/profile &> /dev/null
+In the OpenWrt web UI, go to **Network → Interfaces → LAN → Edit**, and change the **IPv4 address** to:
 
-    #6
-    export url='https://testingcf.jsdelivr.net/gh/juewuy/ShellCrash@master' \
-    && sh -c "$(curl -kfsSl $url/install.sh)" \
-    && . /etc/profile &> /dev/null
+```
+169.254.31.1
+```
 
-<br>
+Save & Apply. This address segment prevents conflicts with the Xiaomi router's own `192.168.31.0/24` network while still letting the two devices talk to each other during the unlock.
 
-- [putty下载>>](https://github.com/aews/lyq/releases/download/AX6000/putty.zip)
-- [http://192.168.31.1:9999/ui](http://192.168.31.1:9999/ui)
+## Step 6 — Enable the Mobile Hotspot for the Connection
 
-- 我使用的机场：http://www.txyun.xyz/
-- 电报：https://t.me/kjfxlyq
+1. Turn **on** the mobile hotspot you created in Step 1.
+2. On the PC, open the hotspot's network connection properties and **uncheck "Internet Protocol Version 4 (TCP/IPv4)"** — the hotspot link is used only to carry traffic between the PC/VM and the router; it must not provide its own IPv4 configuration.
 
+## Step 7 — Configure the VM's Bridged Networking
+
+In VMware:
+
+```
+Edit → Virtual Network Editor → Change Settings
+```
+
+Set the relevant adapter to **Bridged (Bridged mode)** so the OpenWrt VM gets an address on the same network as the Xiaomi router. Run the Virtual Network Editor **as Administrator**. Click **OK** to save.
+
+## Step 8 — Log In to the Xiaomi AX6000 (Trigger the Unlock)
+
+Open your browser and visit the URL below **while logged in** to the Xiaomi router admin. Replace `XXXXXX` with your current **stok** (session token) and `xxx` with the correct **admin nonce** (both are obtained after logging in to `http://192.168.31.1` — the stok is visible in the address bar of the admin page):
+
+```
+http://192.168.31.1/cgi-bin/luci/;stok=XXXXXX/api/xqsystem/extendwifi_connect_inited_router?ssid=OpenWrt&password=12345678&encryption=WPA2PSKenctype=CCMP&channel=1&band=2g&admin_username=root&admin_password=admin&admin_nonce=xxx
+```
+
+Notes:
+
+- `ssid=OpenWrt`, `password=12345678` and `channel=1` must match the hotspot you created in Step 1.
+- This request makes the router connect to your hotspot and run the `xqsystem.lua` script you uploaded in Step 4, which unlocks SSH.
+
+## Step 9 — Retrieve the Default root Password from the Serial Number (SN)
+
+The SN is printed on the bottom label of the router (it can also be seen in the admin UI at `192.168.31.1`). Use it to calculate the default `root` account password:
+
+```
+https://miwifi.dev/ssh
+```
+
+* If the website above is unreachable, download and use this offline tool instead: <a href="https://github.com/aews/lyq/releases/download/AX6000/SN.zip" target="_blank">Download SN tool >></a> <br>
+
+SN format example:
+
+```
+30212/F1ZD22032
+```
+
+After that, connect with PuTTY to the router's IP on **port 22** using `root` and the calculated password. If the unlock succeeded, the login banner will show:
+
+```
+ARE U OK
+```
+
+---
+
+## FAQ / Troubleshooting
+
+**Important notes:**
+
+1. The **stok** changes every time you log in to the Xiaomi router admin. Always copy the latest stok before retrying.
+2. After a successful SSH unlock there may be **no visible confirmation** in the browser — verify by logging in with PuTTY. Seeing `ARE U OK` means the unlock worked.
+3. If the first attempt fails, log in to the Xiaomi admin again, copy a fresh **stok**, and repeat Step 8.
+
+**If you cannot log in to OpenWrt at `192.168.5.1`:**
+
+1. Restart OpenWrt — either reboot it manually or run the command `reboot` in its console.
+2. Confirm the OpenWrt LAN IP was actually changed to `169.254.31.1` (Step 5). If it was, you must use **that** address to log in.
+3. Change your PC's local network adapter IP into the **same subnet** as the OpenWrt IP (e.g. `169.254.31.x`).
+4. In VMware: shut down the running OpenWrt VM, then go to **Edit → Virtual Network Editor → Change Settings → Restore Default Settings**, and set Bridged mode again (Step 7).
+5. Enter the OpenWrt IP in the browser to log in.
+
+**If you get the error `{"msg":"一键换机过程中请求对端接口失败","code":1643}`
+(translated: *"One-click device migration: request to the peer interface failed"*):**
+
+In the OpenWrt VM console, run:
+
+```
+vim /etc/config/dhcp
+```
+
+Then press and hold **`d`** to delete all content, press **ESC**, type **`:wq`**, and press **Enter** to save and quit. Finally reboot the VM:
+
+```
+reboot
+```
+
+---
+
+# Installing ShellClash for Proxy Access
+
+Xiaomi AX6000 internet-access tutorial video: https://youtu.be/vn5QdyDlTtI
+
+SSH into OpenWrt (or the router, depending on where you are installing) and run the following one-liner to install **ShellClash**:
+
+```
+export url='https://testingcf.jsdelivr.net/gh/juewuy/ShellCrash@master' && sh -c "$(curl -kfsSl $url/install.sh)" && . /etc/profile &> /dev/null
+```
+
+If the installation fails (e.g. the mirror is blocked or unreachable), use one of the backup install sources below:
+
+```
+#1
+export url='https://raw.githubusercontent.com/juewuy/ShellCrash/master' && sh -c "$(curl -kfsSl $url/install.sh)" && . /etc/profile &> /dev/null
+```
+
+```
+#2
+export url='https://fastly.jsdelivr.net/gh/juewuy/ShellCrash@master' && sh -c "$(curl -kfsSl $url/install.sh)" && source /etc/profile &> /dev/null
+```
+
+```
+#3
+export url='https://gh.jwsc.eu.org/master' && sh -c "$(curl -kfsSl $url/install.sh)" && . /etc/profile &> /dev/null
+```
+
+```
+#4
+export url='https://testingcf.jsdelivr.net/gh/juewuy/ShellCrash@master' && wget -q --no-check-certificate -O /tmp/install.sh $url/install.sh  && sh /tmp/install.sh && . /etc/profile &> /dev/null
+```
+
+```
+#5
+export url='http://t.jwsc.eu.org' && wget -q -O /tmp/install.sh $url/install.sh  && sh /tmp/install.sh && . /etc/profile &> /dev/null
+```
+
+```
+#6
+export url='https://testingcf.jsdelivr.net/gh/juewuy/ShellCrash@master' \
+&& sh -c "$(curl -kfsSl $url/install.sh)" \
+&& . /etc/profile &> /dev/null
+```
+
+After installation, follow the on-screen menu to import your subscription/rules, then manage Clash from the router or from the web UI at:
+
+- **Clash Web UI:** http://192.168.31.1:9999/ui
+
+---
+
+## Useful Links
+
+- [PuTTY download >>](https://github.com/aews/lyq/releases/download/AX6000/putty.zip)
+- [Clash Web UI — http://192.168.31.1:9999/ui](http://192.168.31.1:9999/ui)
+- Proxy provider ("airport") used by the author: http://www.txyun.xyz/
+- Telegram channel: https://t.me/kjfxlyq
